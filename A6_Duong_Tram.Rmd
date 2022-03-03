@@ -1,0 +1,109 @@
+---
+title: "A6_Duong_Tram"
+author: "TramooD17"
+date: "01/03/2022"
+output: html_document
+---
+
+INTRODUCTORY
+An unknown sequence has been found in a patient.
+
+Github Repository Link: https://github.com/TramooD17/DNA-Alignments
+
+Setting Up needed libraries and packages:
+```{r}
+library(BiocManager)
+library(annotate)
+library(genbankr)
+library(ape)
+library(muscle)
+library(dplyr)
+library(Biostrings)
+library(reshape2)
+library(ggtree)
+```
+Sequence of Interest:
+> Human isolate, unknown sequence
+ATGTCTGATAATGGACCCCAAAATCAGCGAAATGCACCCCGCATTACGTTTGGTGGACCCTCAGATTCAACTGGCAGTAACCAGAATGGAGAACGCAGTGGGGCGCGATCAAAACAACGTCGGCCCCAAGGTTTACCCAATAATACTGCGTCTTGGTTCACCGCTCTCACTCAACATGGCAAGGAAGACCTTAAATTCCCTCGAGGACAAGGCGTTCCAATTAACACCAATAGCAGTCCAGATGACCAAATTGGCTACTACCGAAGAGCTACCAGACGAATTCGTGGTGGTGACGGTAAAATGAAAGATCTCAGTCCAAGATGGTATTTCTACTACCTAGGAACTGGGCCAGAAGCTGGACTTCCCTATGGTGCTAACAAAGACGGCATCATATGGGTTGCAACTGAGGGAGCCTTGAATACACCAAAAGATCACATTGGCACCCGCAATCCTGCTAACAATGCTGCAATCGTGCTACAACTTCCTCAAGGAACAACATTGCCAAAAGGCTTCTACGCAGAAGGGAGCAGAGGCGGCAGTCAAGCCTCTTCTCGTTCCTCATCACGTAGTCGCAACAGTTCAAGAAATTCAACTCCAGGCAGCAGTAGGGGAACTTCTCCTGCTAGAATGGCTGGCAATGGCGGTGATGCTGCTCTTGCTTTGCTGCTGCTTGACAGATTGAACCAGCTTGAGAGCAAAATGTCTGGTAAAGGCCAACAACAACAAGGCCAAACTGTCACTAAGAAATCTGCTGCTGAGGCTTCTAAGAAGCCTCGGCAAAAACGTACTGCCACTAAAGCATACAATGTAACACAAGCTTTCGGCAGACGTGGTCCAGAACAAACCCAAGGAAATTTTGGGGACCAGGAACTAATCAGACAAGGAACTGATTACAAACATTGGCCGCAAATTGCACAATTTGCCCCCAGCGCTTCAGCGTTCTTCGGAATGTCGCGCATTGGCATGGAAGTCACACCTTCGGGAACGTGGTTGACCTACACAGGTGCCATCAAATTGGATGACAAAGATCCAAATTTCAAAGATCAAGTCATTTTGCTGAATAAGCATATTGACGCATACAAAACATTCCCACCAACAGAGCCTAAAAAGGACAAAAAGAAGAAGGCTGATGAAACTCAAGCCTTACCGCAGAGACAGAAGAAACAGCAAACTGTGACTCTTCTTCCTGCTGCAGATTTGGATGATTTCTCCAAACAATTGCAACAATCCATGAGCAGTGCTGACTCAACTCAGGCCTAA
+
+ANALYSIS
+The sequence was converted into a character object:
+```{r}
+unkown <- "ATGTCTGATAATGGACCCCAAAATCAGCGAAATGCACCCCGCATTACGTTTGGTGGACCCTCAGATTCAACTGGCAGTAACCAGAATGGAGAACGCAGTGGGGCGCGATCAAAACAACGTCGGCCCCAAGGTTTACCCAATAATACTGCGTCTTGGTTCACCGCTCTCACTCAACATGGCAAGGAAGACCTTAAATTCCCTCGAGGACAAGGCGTTCCAATTAACACCAATAGCAGTCCAGATGACCAAATTGGCTACTACCGAAGAGCTACCAGACGAATTCGTGGTGGTGACGGTAAAATGAAAGATCTCAGTCCAAGATGGTATTTCTACTACCTAGGAACTGGGCCAGAAGCTGGACTTCCCTATGGTGCTAACAAAGACGGCATCATATGGGTTGCAACTGAGGGAGCCTTGAATACACCAAAAGATCACATTGGCACCCGCAATCCTGCTAACAATGCTGCAATCGTGCTACAACTTCCTCAAGGAACAACATTGCCAAAAGGCTTCTACGCAGAAGGGAGCAGAGGCGGCAGTCAAGCCTCTTCTCGTTCCTCATCACGTAGTCGCAACAGTTCAAGAAATTCAACTCCAGGCAGCAGTAGGGGAACTTCTCCTGCTAGAATGGCTGGCAATGGCGGTGATGCTGCTCTTGCTTTGCTGCTGCTTGACAGATTGAACCAGCTTGAGAGCAAAATGTCTGGTAAAGGCCAACAACAACAAGGCCAAACTGTCACTAAGAAATCTGCTGCTGAGGCTTCTAAGAAGCCTCGGCAAAAACGTACTGCCACTAAAGCATACAATGTAACACAAGCTTTCGGCAGACGTGGTCCAGAACAAACCCAAGGAAATTTTGGGGACCAGGAACTAATCAGACAAGGAACTGATTACAAACATTGGCCGCAAATTGCACAATTTGCCCCCAGCGCTTCAGCGTTCTTCGGAATGTCGCGCATTGGCATGGAAGTCACACCTTCGGGAACGTGGTTGACCTACACAGGTGCCATCAAATTGGATGACAAAGATCCAAATTTCAAAGATCAAGTCATTTTGCTGAATAAGCATATTGACGCATACAAAACATTCCCACCAACAGAGCCTAAAAAGGACAAAAAGAAGAAGGCTGATGAAACTCAAGCCTTACCGCAGAGACAGAAGAAACAGCAAACTGTGACTCTTCTTCCTGCTGCAGATTTGGATGATTTCTCCAAACAATTGCAACAATCCATGAGCAGTGCTGACTCAACTCAGGCCTAA"
+```
+BLAST was used to find sequences similar to the unknown sequence:
+```{r}
+unkownBLAST <- blastSequences(paste(unkown), as='data.frame',hitListSize = 40, timeout = 600)
+```
+A vector of accession numbers from the BLAST results was made and turned into a dataframe:
+```{r}
+unkownhitsdf <- data.frame(ID=unkownBLAST$Hit_accession,Seq=unkownBLAST$Hsp_hseq,stringsAsFactors = FALSE)
+```
+Sequences were read from GenBank:
+```{r}
+unknownseqs <- read.GenBank(unkownBLAST$Hit_accession[1:3])
+```
+The species that matched closest to the sequence of interest found in the patient is severe acute respiratory syndrome corona virus 2 (SARS-Cov2), according to the top three BLAST results.
+```{r}
+attr(unknownseqs,"species")
+```
+The DNAbin object was converted into a DNAStringSet for an alignment:
+```{r}
+unknownDNAString <- unkownhitsdf$Seq %>%
+  as.character %>%
+  lapply(.,paste0,collapse="") %>%
+  unlist %>%
+  DNAStringSet
+```
+Each sequence was given a unique name for organizational purposes, using index numbers:
+```{r}
+names(unknownDNAString) <- paste(1:nrow(unkownhitsdf),unkownhitsdf$ID,sep="_")
+```
+The sequences were aligned:
+```{r}
+unknownalign <- muscle::muscle(stringset = unknownDNAString, quiet = T)
+```
+The alignment was inspected for large gaps in the sequences:
+```{r}
+detail(unknownalign)
+```
+```{r}
+SeqLen <- as.numeric(lapply(unknownDNAString,length))
+library(ggplot2)
+qplot(SeqLen)+theme_bw()
+```
+Figure 1. Histogram depicting sequence length of the sequences collected from BLAST. There appear to be no gaps in the sequence.
+
+A distance matrix was created in order to prepare a phylogenetic tree.
+The DNAMultipleAlignment object was first converted into a DNABin and rearranged into a linear matrix:
+```{r}
+unknownalignBin <- as.DNAbin(unknownalign)
+unDM <- dist.dna(unknownalignBin, model = "K80")
+unDMmat <- as.matrix(unDM)
+uDat <- melt(unDMmat)
+dim(uDat)
+```
+The matrix was visualized:
+```{r}
+ggplot(data = uDat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile()+scale_fill_gradientn(colours=c("white","blue","pink","yellow")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+```
+Figure 2. A matrix was generated to visualize alignments in the aligned sequences. It appears that all sequences are identical to each other.
+
+Using the distance matrix, a Neighbour-Joining phylogenetic tree was created for the aligned sequences:
+```{r}
+untree <- nj(unDM)
+```
+```{r}
+ggtree(untree)
+```
+Figue 3. A phylogenetic tree of the 40 aligned sequences generated from BLAST. The straight line implies that the sequences aligned are identical to each other and that there are no divergences into lineages and no relationship to other species.
+
+The tree file was saved:
+```{r}
+write.tree(untree,"A6_Duong_Tram.tre")
+```
+
+CONCLUSIONS
+The sequence of interest found in the human isolate is not human, but rather that of the SARS-Cov2 virus. When aligning sequences from BLAST matches, it was found that the DNA sequence of interest has no relation to any other species, including human, but its own. This means that it is completely foreign to the human body, and should be a cause of concern.
